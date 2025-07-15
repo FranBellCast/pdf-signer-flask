@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_file
 import fitz  # PyMuPDF
 import base64
 from io import BytesIO
+import os
 
 app = Flask(__name__)
 
@@ -15,19 +16,11 @@ def add_signature():
         signature_base64 = request.form['signature_base64']
         signature_bytes = base64.b64decode(signature_base64)
 
-        # Load PDF
-        pdf_bytes = uploaded_file.read()
-        pdf_stream = BytesIO(pdf_bytes)
+        pdf_stream = BytesIO(uploaded_file.read())
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
 
-        # Load the image as a pixmap using fitz.open
-        img_doc = fitz.open("png", signature_bytes)
-        signature_image = img_doc[0].get_pixmap()
-
-        # Target the last page
+        signature_image = fitz.Pixmap(signature_bytes)
         page = doc[-1]
-
-        # Define position for the image (bottom-right)
         padding = 40
         image_width = 150
         image_height = 50
@@ -35,13 +28,8 @@ def add_signature():
         page_height = page.rect.height
         x0 = page_width - image_width - padding
         y0 = page_height - image_height - padding
-        x1 = x0 + image_width
-        y1 = y0 + image_height
+        page.insert_image(fitz.Rect(x0, y0, x0 + image_width, y0 + image_height), pixmap=signature_image)
 
-        # Insert the image
-        page.insert_image(fitz.Rect(x0, y0, x1, y1), pixmap=signature_image)
-
-        # Return new PDF
         output_stream = BytesIO()
         doc.save(output_stream)
         doc.close()
@@ -51,3 +39,7 @@ def add_signature():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
