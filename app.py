@@ -20,10 +20,14 @@ def add_signature():
         pdf_stream = BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
 
-        # Load image
-        signature_image = fitz.Pixmap(signature_bytes)
+        # Load the image as a pixmap using fitz.open
+        img_doc = fitz.open("png", signature_bytes)
+        signature_image = img_doc[0].get_pixmap()
 
+        # Target the last page
         page = doc[-1]
+
+        # Define position for the image (bottom-right)
         padding = 40
         image_width = 150
         image_height = 50
@@ -34,8 +38,10 @@ def add_signature():
         x1 = x0 + image_width
         y1 = y0 + image_height
 
+        # Insert the image
         page.insert_image(fitz.Rect(x0, y0, x1, y1), pixmap=signature_image)
 
+        # Return new PDF
         output_stream = BytesIO()
         doc.save(output_stream)
         doc.close()
